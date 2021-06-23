@@ -1,0 +1,130 @@
+<html>
+
+<head>
+    <title>video chat app</title>
+</head>
+
+<style>
+    video {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+</style>
+
+<body>
+    <h3 id="show-peer"></h3>
+    <div style="display: flex ; justify-content : space-around ; margin : 10px ;">
+        <div style="width: 400px; height: 300px; border : 2px solid" id="ourVideo"></div>
+        <div style="width: 400px; height: 300px; border : 2px solid" id="remoteVideo"></div>
+    </div>
+    <input id="peerID" placeholder="peer ID">
+    <button id="CallPeer">Call Peer</button>
+    <br>
+    <button id="ShareScreen">Share Screen</button>
+</body>
+
+<script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+
+<script>
+    window.addEventListener("load", (event) => {
+        var peer = new Peer();
+        var myStream;
+        var peerList = [];
+        var currPeeer;
+        peer.on('open', function (id) {
+            document.getElementById("show-peer").innerHTML = id;
+        });
+
+        peer.on("call", function (call) {
+            navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true,
+            }).then((stream) => {
+                myStream = stream;
+                addOurVideoStream(myStream);
+                call.answer(myStream);
+                call.on("stream", function (remoteStream) {
+                    if (!peerList.includes(call.peer)) {
+                        addRemoteStream(remoteStream);
+                        currPeeer = call.peerConnection;
+                        peerList.push(call.peer);
+                    }
+                })
+            }).catch((err) => {
+                console.log(err + "unable to fetch media");
+            })
+        })
+
+        document.getElementById("CallPeer").addEventListener('click', (e) => {
+            const remotePeerId = document.getElementById("peerID").value;
+            if (remotePeerId === "")
+                window.alert("Sorry ! peerId field cannot be empty .Try Again");
+            else
+                document.getElementById("show-peer").innerHTML = "connecting" + remotePeerId;
+
+            callPeer(remotePeerId);
+        });
+
+        function callPeer(remotePeerId) {
+            navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true,
+            }).then((stream) => {
+                myStream = stream;
+                addOurVideoStream(myStream);
+                let call = peer.call(remotePeerId, myStream);
+                call.on("stream", function (remoteStream) {
+                    if (!peerList.includes(call.peer)) {
+                        addRemoteStream(remoteStream);
+                        currPeeer = call.peerConnection;
+                        peerList.push(call.peer);
+                    }
+
+                })
+            }).catch((err) => {
+                console.log(err + " unable to fetch media");
+            })
+        };
+
+        document.getElementById('ShareScreen').addEventListener('click', (e) => {
+            
+            navigator.mediaDevices.getDisplayMedia({
+                videos: {
+                    cursor: "always"
+                },
+                media: {
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
+            }).then((stream) => {
+                let videotrack = stream.getVideoTracks()[0];
+                let sender = currentPeer.getSender().find(function (s) {
+                    return s.track.kind == videotrack.kind;
+                })
+                sender.replaceTrack(videotrack);
+            }).catch((err) => {
+                console.log("unable to get the display media : " + err);
+            })
+        })
+
+    });
+
+    function addRemoteStream(remoteStream) {
+        let video = document.createElement("video");
+        video.srcObject = remoteStream;
+        video.play();
+        document.getElementById("remoteVideo").append(video);
+    }
+
+    function addOurVideoStream(remoteStream) {
+        let video = document.createElement("video");
+        video.srcObject = remoteStream;
+        video.play();
+        document.getElementById("ourVideo").append(video);
+    }
+
+
+</script>
+
+</html>
